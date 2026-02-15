@@ -1,22 +1,45 @@
-# Software related to the Wii
+# WiiGSC for macOS
 
+A macOS-native port of **WiiGSC (Wii Game Shortcut Creator)** — create Wii channel forwarders from your game library with authentic banners, icons, and working game launch.
 
-I'll be sharing the source code of Wii tools developed by me here...
+## Features
 
-You can find the binary releases for this programs on my homepage here : http://www.tepetaklak.com/wii/
+- Create WAD forwarder channels from WBFS/ISO game files
+- Extracts authentic banners and icons directly from game images using [wit (Wiimms ISO Tools)](https://wit.wiimm.de/)
+- Supports USB Loader GX, WiiFlow, Yal, and Configurable forwarder DOLs
+- Downloads cover art from GameTDB
+- Built-in WAD validator with brick-prevention safety checks
+- Native macOS app bundle (Apple Silicon / arm64)
 
-Beware that None of them is actively developed so I can't guarantee that you can even compile them, I'm just pushing them here from a non development environment.
+## Requirements
 
- - SaveTemper is the code name for the FE100 tool. I guess (it's 14 years old) FE is iron's (which is my nick) chemical element symbol and 100 is the sum of 80+20 which are referring to original programs created by Segher. This software is a simplification effort for the end user for those programs, namely tachtig (eighty) and twintig (twenty). 
+- macOS (Apple Silicon)
+- .NET 8.0 SDK (for building)
+- [wit (Wiimms ISO Tools)](https://wit.wiimm.de/) installed at `/usr/local/bin/wit`
 
- - crapwii folder contains source code for both latest Crap and latest WiiGSC release with a tiny bit of change. 
-   - Bat files left intact and contains absolute paths in my old dev env. since I'm not actively developing.
-   - Changing the installers would need proper devkitppc setup, I don't remember which lib versions they were compatible with. 
-   - WiiGSC builds and runs fine with Visual Studio 2019 but I didn't test it. 
-   - Installation feature not converted to VS2019 properly so it's missing.
-   - The change is to the muzak folder where I removed jt's tracks and put one of my own compositions. Music is used in the info screen. 
-   - Sources for several other stuff is also here
-      - KeyStego : a simple steganography application. 
-	  - CrazyInstaller : fantastic tool that can create installers for channels also capable of creating pc side executable installers which use wiiload feature in the Homebrew channel.
+## Building
 
- - CrazyIntroVideo is a preloader plugin like application to play videos when you start the wii. mplayerwii library is used in compiled form.
+```bash
+./build-macos.sh
+```
+
+This produces `WiiGSC.app` in the project root.
+
+## Usage
+
+1. Open WiiGSC.app
+2. Select a WBFS or ISO game file (filename should include the disc ID, e.g. `Wii Sports [RSPE01].wbfs`)
+3. Choose your USB loader type
+4. Select an output path for the WAD
+5. Click **Create WAD**
+6. Install the resulting WAD to your Wii using a WAD manager
+
+## Credits
+
+- **JustinMarotta13** — macOS port using Avalonia/.NET 8
+- **modmii** — original WiiGSC (Wii Game Shortcut Creator)
+- **netjat76** — original Wii tools and SaveTemper source code
+
+## License
+
+See individual license files in the source directories.

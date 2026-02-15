@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <CFBundleName>WiiGSC</CFBundleName>
+    <CFBundleDisplayName>Wii Game Shortcut Creator</CFBundleDisplayName>
+    <CFBundleIdentifier>com.wiicrazy.wiigsc</CFBundleIdentifier>
+    <CFBundleVersion>2.0.0</CFBundleVersion>
+    <CFBundleShortVersionString>2.0</CFBundleShortVersionString>
+    <CFBundlePackageType>APPL</CFBundlePackageType>
+    <CFBundleIconFile>WiiGSC.icns</CFBundleIconFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+    <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.12">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WiiHelpers\WiiHelpers.csproj" />
+    <ProjectReference Include="..\CommonHelpers\CommonHelpers.csproj" />
+    <ProjectReference Include="..\LoaderManager\LoaderManager.csproj" />
+    <ProjectReference Include="..\MultiLanguage\MultiLanguage.csproj" />
+    <ProjectReference Include="..\Schema\Schema.csproj" />
+    <ProjectReference Include="..\UpdateManager\UpdateManager.csproj" />
+    <ProjectReference Include="..\WordStegoLib\WordStegoLib.csproj" />
+    <ProjectReference Include="..\SharpZipLib\SharpZipLib.csproj" />
+    <ProjectReference Include="..\libWiiSharp\libWiiSharp\libWiiSharp_modern.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\cert-corrected.sys" />
+    <EmbeddedResource Include="Resources\Loaders\**" />
+  </ItemGroup>
+</Project>

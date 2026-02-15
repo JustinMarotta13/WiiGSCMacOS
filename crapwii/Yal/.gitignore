@@ -1,7 +1,0 @@
-*.dol
-*.elf
-*.exe
-*.bat
-*.d
-build/
-.svn/

@@ -1,1 +1,0 @@
-﻿Alt-dols extracted from disc images are stored here.
