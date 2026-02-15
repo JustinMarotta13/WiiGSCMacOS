@@ -1,1 +1,0 @@
-﻿WiiGSC stores common-key here..

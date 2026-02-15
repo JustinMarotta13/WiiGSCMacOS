@@ -1,1 +1,0 @@
-﻿WiiGSC stores created wad files here.

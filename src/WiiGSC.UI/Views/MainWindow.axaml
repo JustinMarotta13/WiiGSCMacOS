@@ -1,0 +1,613 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:WiiGSC.UI.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+        x:Class="WiiGSC.UI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="WiiGSC - Wii Game Shortcut Creator"
+        Width="900" Height="700"
+        MinWidth="800" MinHeight="650">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="Open _ISO..." Command="{Binding OpenIsoCommand}" />
+                <MenuItem Header="Open _Banner..." Command="{Binding OpenBannerCommand}" />
+                <MenuItem Header="Open _WBFS Drive..." Command="{Binding OpenWbfsCommand}" />
+                <Separator />
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Language">
+                <MenuItem Header="_English" Command="{Binding ChangeLanguageCommand}" CommandParameter="English" />
+                <MenuItem Header="_Spanish" Command="{Binding ChangeLanguageCommand}" CommandParameter="Spanish" />
+                <MenuItem Header="_French" Command="{Binding ChangeLanguageCommand}" CommandParameter="French" />
+                <MenuItem Header="_German" Command="{Binding ChangeLanguageCommand}" CommandParameter="German" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Command="{Binding AboutCommand}" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="#2D2D2D" Padding="8,4">
+            <DockPanel>
+                <TextBlock Text="{Binding StatusText}" 
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+                <ProgressBar Value="{Binding ProgressValue}" 
+                           Maximum="100"
+                           Width="200"
+                           Height="18"
+                           HorizontalAlignment="Right"
+                           IsVisible="{Binding IsOperationInProgress}" />
+            </DockPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <TabControl>
+            <!-- Game Shortcut Tab -->
+            <TabItem Header="Game Shortcut">
+                <ScrollViewer>
+                    <StackPanel Margin="16" Spacing="12">
+                
+                <!-- Source Selection -->
+                <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Source" FontWeight="Bold" FontSize="14" />
+                        
+                        <RadioButton Content="ISO File" 
+                                   IsChecked="{Binding IsIsoMode}"
+                                   GroupName="SourceMode" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" 
+                                  IsVisible="{Binding IsIsoMode}"
+                                  Margin="24,0,0,0">
+                            <TextBox Text="{Binding IsoFilePath}" 
+                                   Watermark="Select ISO file..."
+                                   Width="500" />
+                            <Button Content="Browse..." Command="{Binding BrowseIsoCommand}" />
+                        </StackPanel>
+
+                        <RadioButton Content="Banner File" 
+                                   IsChecked="{Binding IsBannerMode}"
+                                   GroupName="SourceMode" />
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                  IsVisible="{Binding IsBannerMode}"
+                                  Margin="24,0,0,0">
+                            <TextBox Text="{Binding BannerFilePath}" 
+                                   Watermark="Select banner file..."
+                                   Width="500" />
+                            <Button Content="Browse..." Command="{Binding BrowseBannerCommand}" />
+                        </StackPanel>
+
+                        <RadioButton Content="WBFS Drive" 
+                                   IsChecked="{Binding IsWbfsMode}"
+                                   GroupName="SourceMode" />
+                        <StackPanel IsVisible="{Binding IsWbfsMode}"
+                                  Margin="24,0,0,0" Spacing="8">
+                            <TextBlock Text="WBFS Folder:" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox Text="{Binding WbfsFolderPath}" 
+                                       Width="300" 
+                                       IsReadOnly="True"
+                                       Watermark="Select WBFS folder..." />
+                                <Button Content="Browse..." 
+                                      Command="{Binding BrowseWbfsFolderCommand}" 
+                                      Width="100" />
+                            </StackPanel>
+                            <TextBlock Text="Select Game:" Margin="0,8,0,0" />
+                            <ComboBox ItemsSource="{Binding WbfsDrives}"
+                                    SelectedItem="{Binding SelectedWbfsDrive}"
+                                    Width="300"
+                                    HorizontalAlignment="Left" />
+                            <Button Content="Refresh" 
+                                  Command="{Binding RefreshWbfsCommand}" 
+                                  Width="100" 
+                                  HorizontalAlignment="Left" 
+                                  Margin="0,4,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Game Information -->
+                <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4"
+                      IsVisible="{Binding IsGameLoaded}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                        <!-- Cover Art -->
+                        <Border Grid.Column="0" 
+                                BorderBrush="Gray" 
+                                BorderThickness="1" 
+                                CornerRadius="4"
+                                Width="160"
+                                Height="224"
+                                Background="#F0F0F0"
+                                VerticalAlignment="Top">
+                            <Panel>
+                                <Image Source="{Binding CoverArt}" 
+                                     Stretch="Uniform"
+                                     IsVisible="{Binding CoverArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Text="No Cover" 
+                                         HorizontalAlignment="Center" 
+                                         VerticalAlignment="Center"
+                                         Foreground="Gray"
+                                         IsVisible="{Binding CoverArt, Converter={x:Static ObjectConverters.IsNull}}" />
+                                <ProgressBar IsIndeterminate="True" 
+                                           IsVisible="{Binding IsLoadingCover}"
+                                           VerticalAlignment="Bottom" 
+                                           Margin="4" />
+                            </Panel>
+                        </Border>
+                        
+                        <!-- Game Info -->
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock Text="Game Information" FontWeight="Bold" FontSize="14" />
+                            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" VerticalAlignment="Top">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Game Name:" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="0" Grid.Column="1" 
+                                       Text="{Binding GameName}" 
+                                       FontWeight="Bold" 
+                                       IsReadOnly="True"
+                                       BorderThickness="0"
+                                       Background="Transparent"
+                                       Padding="0" />
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Disc ID:" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="1" Grid.Column="1" 
+                                       Text="{Binding DiscId}"
+                                       IsReadOnly="True"
+                                       BorderThickness="0"
+                                       Background="Transparent"
+                                       Padding="0" />
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Region:" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="2" Grid.Column="1" 
+                                       Text="{Binding GameRegion}"
+                                       IsReadOnly="True"
+                                       BorderThickness="0"
+                                       Background="Transparent"
+                                       Padding="0" />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Configuration -->
+                <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Configuration" FontWeight="Bold" FontSize="14" />
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Loader:" Width="120" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding Loaders}"
+                                    SelectedItem="{Binding SelectedLoader}"
+                                    Width="300">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" 
+                                                 ToolTip.Tip="{Binding Description}"
+                                                 Background="Transparent" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Title ID:" Width="120" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding TitleId}" 
+                                   Width="120"
+                                   Watermark="e.g., RMCE" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Language:" Width="120" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding Languages}"
+                                    SelectedItem="{Binding SelectedLanguage}"
+                                    Width="200" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Region:" Width="120" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding Regions}"
+                                    SelectedItem="{Binding SelectedRegion}"
+                                    Width="200" />
+                        </StackPanel>
+
+                        <CheckBox Content="Enable Ocarina (Cheat Codes)" 
+                                IsChecked="{Binding EnableOcarina}" 
+                                Margin="120,4,0,0" />
+                        
+                        <CheckBox Content="Force Video Mode" 
+                                IsChecked="{Binding ForceVideoMode}" 
+                                Margin="120,0,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Create Button -->
+                <Button Content="Create Shortcut" 
+                      Command="{Binding CreateShortcutCommand}"
+                      IsEnabled="{Binding CanCreate}"
+                      HorizontalAlignment="Center"
+                      Padding="32,12"
+                      FontSize="16"
+                      FontWeight="Bold">
+                    <Button.Styles>
+                        <Style Selector="Button:disabled">
+                            <Setter Property="Background" Value="#CCCCCC" />
+                            <Setter Property="Foreground" Value="#888888" />
+                        </Style>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#007AFF" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Style>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#0051D5" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+                      
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Homebrew App Shortcut Tab -->
+            <TabItem Header="Homebrew App Shortcut">
+                <ScrollViewer>
+                    <StackPanel Margin="16" Spacing="12">
+                        <TextBlock Text="Homebrew App Forwarder" 
+                                 FontSize="18" 
+                                 FontWeight="Bold" 
+                                 Margin="0,0,0,8" />
+                        
+                        <TextBlock Text="Create a channel that forwards to a homebrew app on your SD card." 
+                                 TextWrapping="Wrap" 
+                                 Foreground="Gray" 
+                                 Margin="0,0,0,16" />
+                        
+                        <!-- Apps Directory Selection -->
+                        <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Apps Directory" FontWeight="Bold" FontSize="14" />
+                                <TextBlock Text="Select the /apps/ directory on your SD card" 
+                                         Foreground="Gray" 
+                                         TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox Text="{Binding HomebrewAppsDirectory}" 
+                                           Width="400"
+                                           IsReadOnly="True"
+                                           Watermark="Browse to /apps/ folder..." />
+                                    <Button Content="Browse..." Command="{Binding BrowseAppsDirectoryCommand}" />
+                                </StackPanel>
+                                
+                                <!-- App Selection -->
+                                <TextBlock Text="Select App" FontWeight="Bold" FontSize="14" Margin="0,8,0,0" />
+                                <ComboBox ItemsSource="{Binding AvailableApps}"
+                                        SelectedItem="{Binding SelectedApp}"
+                                        Width="300"
+                                        HorizontalAlignment="Left"
+                                        IsEnabled="{Binding HasApps}"
+                                        PlaceholderText="Choose an app..." />
+                                
+                                <TextBlock Text="Or enter manually (3-18 characters):" 
+                                         Foreground="Gray" 
+                                         Margin="0,8,0,0" />
+                                <TextBox Text="{Binding HomebrewAppFolder}" 
+                                       Watermark="e.g., homebrew_browser"
+                                       Width="300"
+                                       HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Channel Configuration -->
+                        <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Channel Configuration" FontWeight="Bold" FontSize="14" />
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Channel Title:" Width="120" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding HomebrewChannelTitle}" 
+                                           Width="300"
+                                           Watermark="e.g., Homebrew Browser" />
+                                </StackPanel>
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Title ID:" Width="120" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding HomebrewTitleId}" 
+                                           Width="120"
+                                           Watermark="e.g., HBAP" />
+                                </StackPanel>
+                                
+                                <TextBlock Text="Cover Image (optional)" Margin="0,8,0,0" />
+                                <TextBlock Text="Automatically detected from app folder if available" 
+                                         Foreground="Gray" 
+                                         FontSize="12" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox Text="{Binding HomebrewCoverPath}" 
+                                           Width="400"
+                                           IsReadOnly="True"
+                                           Watermark="Auto-detected or browse manually..." />
+                                    <Button Content="Browse..." Command="{Binding BrowseHomebrewCoverCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Create Button -->
+                        <Button Content="Create Forwarder" 
+                              Command="{Binding CreateHomebrewForwarderCommand}"
+                              IsEnabled="{Binding CanCreateHomebrew}"
+                              HorizontalAlignment="Center"
+                              Padding="32,12"
+                              FontSize="16"
+                              FontWeight="Bold">
+                            <Button.Styles>
+                                <Style Selector="Button:disabled">
+                                    <Setter Property="Background" Value="#CCCCCC" />
+                                    <Setter Property="Foreground" Value="#888888" />
+                                </Style>
+                                <Style Selector="Button">
+                                    <Setter Property="Background" Value="#28A745" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Style>
+                                <Style Selector="Button:pointerover">
+                                    <Setter Property="Background" Value="#218838" />
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                        
+                        <TextBlock Text="Note: This feature requires ForwardMii templates. Implementation coming soon." 
+                                 Foreground="Orange" 
+                                 TextWrapping="Wrap"
+                                 HorizontalAlignment="Center"
+                                 Margin="0,16,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            
+            <!-- WAD Validator Tab -->
+            <TabItem Header="WAD Validator">
+                <ScrollViewer>
+                    <StackPanel Margin="16" Spacing="12">
+                        <TextBlock Text="WAD File Validator" 
+                                 FontSize="18" 
+                                 FontWeight="Bold" 
+                                 Margin="0,0,0,8" />
+                        
+                        <TextBlock Text="Validate existing WAD files to check their safety and view information." 
+                                 TextWrapping="Wrap" 
+                                 Foreground="Gray" 
+                                 Margin="0,0,0,16" />
+                        
+                        <!-- WAD File Selection -->
+                        <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Select WAD File" FontWeight="Bold" FontSize="14" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox Text="{Binding WadValidationPath}" 
+                                           Width="500"
+                                           IsReadOnly="True"
+                                           Watermark="Browse to select a WAD file..." />
+                                    <Button Content="Browse..." Command="{Binding BrowseWadFileCommand}" />
+                                </StackPanel>
+                                
+                                <Button Content="Validate WAD" 
+                                      Command="{Binding ValidateWadFileCommand}" 
+                                      IsEnabled="{Binding CanValidateWad}"
+                                      HorizontalAlignment="Left"
+                                      Padding="16,8"
+                                      Margin="0,8,0,0">
+                                    <Button.Styles>
+                                        <Style Selector="Button">
+                                            <Setter Property="Background" Value="#6C757D" />
+                                            <Setter Property="Foreground" Value="White" />
+                                        </Style>
+                                        <Style Selector="Button:pointerover">
+                                            <Setter Property="Background" Value="#5A6268" />
+                                        </Style>
+                                    </Button.Styles>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Validation Results -->
+                        <Border BorderBrush="Gray" 
+                              BorderThickness="1" 
+                              Padding="12" 
+                              CornerRadius="4"
+                              IsVisible="{Binding HasValidationResults}">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Validation Results" FontWeight="Bold" FontSize="14" />
+                                
+                                <!-- Status -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                    <TextBlock Text="Status:" Width="120" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding WadValidationStatus}" 
+                                             Foreground="{Binding WadValidationStatusColor}" 
+                                             FontWeight="Bold" />
+                                </StackPanel>
+                                
+                                <!-- WAD Information -->
+                                <TextBlock Text="WAD Information" 
+                                         FontWeight="Bold" 
+                                         Margin="0,12,0,4" 
+                                         IsVisible="{Binding HasWadInfo}" />
+                                
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0"
+                                      IsVisible="{Binding HasWadInfo}">
+                                    <!-- Left: Info fields -->
+                                    <StackPanel Grid.Column="0" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Title ID:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadTitleId}" />
+                                        </StackPanel>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Channel Title:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadChannelTitle}" />
+                                        </StackPanel>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Region:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadRegion}" />
+                                        </StackPanel>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Title Version:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadTitleVersion}" />
+                                        </StackPanel>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Contents:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadNumContents}" />
+                                        </StackPanel>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="File Size:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadFileSize}" />
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="WAD Type:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadType}" />
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="Required IOS:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadIos}" />
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="NAND Blocks:" Width="120" Foreground="Gray" />
+                                            <TextBlock Text="{Binding WadBlocks}" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Right: Game Art -->
+                                    <Image Grid.Column="1" 
+                                           Source="{Binding WadBannerImage}" 
+                                           Width="160" 
+                                           Height="224"
+                                           Stretch="Uniform"
+                                           VerticalAlignment="Top"
+                                           Margin="16,0,0,0"
+                                           IsVisible="{Binding HasWadBannerImage}" />
+                                </Grid>
+
+                                <!-- What is this? -->
+                                <Border BorderBrush="#DEE2E6" 
+                                      BorderThickness="1" 
+                                      CornerRadius="4" 
+                                      Padding="12" 
+                                      Margin="0,16,0,0"
+                                      IsVisible="{Binding HasWadDescription}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="What is this?" 
+                                                 FontWeight="Bold" 
+                                                 FontSize="14" />
+                                        <TextBlock Text="{Binding WadDescription}" 
+                                                 TextWrapping="Wrap" 
+                                                 LineHeight="20" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Installation Instructions -->
+                                <Border BorderBrush="#74C0FC" 
+                                      BorderThickness="1" 
+                                      CornerRadius="4" 
+                                      Padding="12" 
+                                      Margin="0,12,0,0"
+                                      IsVisible="{Binding HasWadInstallInstructions}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="How to Install" 
+                                                 FontWeight="Bold" 
+                                                 FontSize="14" />
+                                        <TextBlock Text="{Binding WadInstallInstructions}" 
+                                                 TextWrapping="Wrap" 
+                                                 LineHeight="20" />
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Debug Information -->
+                                <Border BorderBrush="#FF0000" 
+                                      BorderThickness="2" 
+                                      CornerRadius="4" 
+                                      Padding="12" 
+                                      Margin="0,16,0,0"
+                                      IsVisible="{Binding HasDebugInfo}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="🔍 Debug Information" 
+                                                 FontWeight="Bold" 
+                                                 FontSize="14" 
+                                                 Foreground="Red" />
+                                        
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Title ID (Ticket):" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding WadTicketTitleId}" 
+                                                     FontFamily="Courier New"
+                                                     FontSize="12" />
+                                            
+                                            <TextBlock Text="Title ID (TMD):" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                            <TextBlock Text="{Binding WadTmdTitleId}" 
+                                                     FontFamily="Courier New"
+                                                     FontSize="12" />
+                                            
+                                            <TextBlock Text="Banner Information:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                            <TextBlock Text="{Binding WadBannerInfo}" 
+                                                     TextWrapping="Wrap"
+                                                     FontSize="12" />
+                                            
+                                            <TextBlock Text="Content Files:" FontWeight="SemiBold" Margin="0,8,0,0" />
+                                            <TextBlock Text="{Binding WadContentSizes}" 
+                                                     TextWrapping="Wrap"
+                                                     FontFamily="Courier New"
+                                                     FontSize="11" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Warnings -->
+                                <TextBlock Text="Warnings" 
+                                         FontWeight="Bold" 
+                                         Foreground="Orange" 
+                                         Margin="0,12,0,4" 
+                                         IsVisible="{Binding HasWadWarnings}" />
+                                <ItemsControl ItemsSource="{Binding WadWarnings}" IsVisible="{Binding HasWadWarnings}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" 
+                                                     Foreground="Orange" 
+                                                     TextWrapping="Wrap" 
+                                                     Margin="0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                
+                                <!-- Errors -->
+                                <TextBlock Text="Errors" 
+                                         FontWeight="Bold" 
+                                         Foreground="Red" 
+                                         Margin="0,12,0,4" 
+                                         IsVisible="{Binding HasWadErrors}" />
+                                <ItemsControl ItemsSource="{Binding WadErrors}" IsVisible="{Binding HasWadErrors}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" 
+                                                     Foreground="Red" 
+                                                     TextWrapping="Wrap" 
+                                                     Margin="0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+
+</Window>

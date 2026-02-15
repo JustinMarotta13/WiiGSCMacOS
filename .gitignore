@@ -1,0 +1,41 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+
+# Build output
+*.dll
+*.exe
+*.app/
+
+# IDE
+.vs/
+.vscode/
+*.swp
+*~
+.idea/
+
+# macOS
+.DS_Store
+Thumbs.db
+
+# Publish / release
+publish/
+out/
+
+# NuGet
+*.nupkg
+**/packages/
+
+# Logs
+*.log
