@@ -462,6 +462,62 @@ namespace libWiiSharp
         }
 
         /// <summary>
+        /// Extracts the raw RGBA byte data of the texture at the given index.
+        /// Cross-platform alternative to ExtractTexture() that avoids System.Drawing.
+        /// </summary>
+        /// <param name="index">Texture index</param>
+        /// <param name="width">Output texture width</param>
+        /// <param name="height">Output texture height</param>
+        /// <returns>Raw RGBA pixel data (4 bytes per pixel, row-major)</returns>
+        public byte[] ExtractTextureBytes(int index, out int width, out int height)
+        {
+            byte[] rgbaData;
+            width = tplTextureHeaders[index].TextureWidth;
+            height = tplTextureHeaders[index].TextureHeight;
+
+            switch ((TPL_TextureFormat)tplTextureHeaders[index].TextureFormat)
+            {
+                case TPL_TextureFormat.I4:
+                    rgbaData = fromI4(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.I8:
+                    rgbaData = fromI8(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.IA4:
+                    rgbaData = fromIA4(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.IA8:
+                    rgbaData = fromIA8(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.RGB565:
+                    rgbaData = fromRGB565(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.RGB5A3:
+                    rgbaData = fromRGB5A3(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.RGBA8:
+                    rgbaData = fromRGBA8(textureData[index], width, height);
+                    break;
+                case TPL_TextureFormat.CI4:
+                    rgbaData = fromCI4(textureData[index], paletteToRgba(index), width, height);
+                    break;
+                case TPL_TextureFormat.CI8:
+                    rgbaData = fromCI8(textureData[index], paletteToRgba(index), width, height);
+                    break;
+                case TPL_TextureFormat.CI14X2:
+                    rgbaData = fromCI14X2(textureData[index], paletteToRgba(index), width, height);
+                    break;
+                case TPL_TextureFormat.CMP:
+                    rgbaData = fromCMP(textureData[index], width, height);
+                    break;
+                default:
+                    throw new FormatException("Unsupported Texture Format!");
+            }
+
+            return rgbaData;
+        }
+
+        /// <summary>
         /// Extracts the first Texture of the TPL.
         /// </summary>
         /// <param name="savePath"></param>

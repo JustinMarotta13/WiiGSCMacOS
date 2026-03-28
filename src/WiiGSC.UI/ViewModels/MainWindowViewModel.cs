@@ -182,7 +182,10 @@ public partial class MainWindowViewModel : ViewModelBase
     
     [ObservableProperty]
     private string _homebrewCoverPath = string.Empty;
-    
+
+    [ObservableProperty]
+    private Bitmap? _homebrewIconPreview;
+
     [ObservableProperty]
     private bool _canCreateHomebrew;
     
@@ -277,7 +280,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _hasDebugInfo;
-    
+
+    [ObservableProperty]
+    private Avalonia.Media.Imaging.Bitmap? _wadExtractedIcon;
+
+    [ObservableProperty]
+    private bool _hasWadExtractedIcon;
+
     [ObservableProperty]
     private bool _hasWadWarnings;
     
@@ -289,6 +298,40 @@ public partial class MainWindowViewModel : ViewModelBase
     
     [ObservableProperty]
     private ObservableCollection<string> _wadErrors = new();
+
+    // Bulk Generation
+    [ObservableProperty]
+    private string _bulkFolderPath = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<BulkGameItem> _bulkGames = new();
+
+    [ObservableProperty]
+    private bool _hasBulkGames;
+
+    [ObservableProperty]
+    private bool _isBulkGenerating;
+
+    [ObservableProperty]
+    private int _bulkTotalGames;
+
+    [ObservableProperty]
+    private int _bulkCompletedGames;
+
+    [ObservableProperty]
+    private int _bulkFailedGames;
+
+    [ObservableProperty]
+    private string _bulkProgressText = string.Empty;
+
+    [ObservableProperty]
+    private LoaderItem _bulkSelectedLoader;
+
+    [ObservableProperty]
+    private bool _bulkAllSelected = true;
+
+    [ObservableProperty]
+    private bool _bulkOcarinaAll;
 
     // Status
     [ObservableProperty]
@@ -306,7 +349,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         // Initialize
-        SelectedLoader = Loaders.FirstOrDefault(l => l.Name.Contains("SD")) ?? Loaders.FirstOrDefault();
+        SelectedLoader = Loaders.FirstOrDefault(l => l.Name.Contains("SD")) ?? Loaders[0];
+        BulkSelectedLoader = Loaders.FirstOrDefault(l => l.Name.Contains("SD")) ?? Loaders[0];
         UpdateCanCreate();
     }
 
@@ -591,8 +635,11 @@ public partial class MainWindowViewModel : ViewModelBase
             
             // Remove colons completely from game name
             cleanGameName = cleanGameName.Replace(":", "");
-            
+
             // Create safe filename: "Game Name [DISCID].wad"
+            // Also strip FAT32-unsafe chars (|, ?, *, etc.) that are valid on macOS but not on SD cards
+            var fat32Unsafe = new char[] { '|', '?', '*', '<', '>', '"', '\\' };
+            cleanGameName = string.Join("", cleanGameName.Split(fat32Unsafe)).Trim();
             var safeGameName = string.Join("_", cleanGameName.Split(Path.GetInvalidFileNameChars()));
             var outputPath = Path.Combine(outputDir, $"{safeGameName} [{DiscId}].wad");
             
@@ -619,7 +666,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 titleId: channelId,
                 discId: DiscId,
                 loaderId: SelectedLoader.Id,
-                witService: _witService
+                witService: _witService,
+                enableOcarina: EnableOcarina
             );
             
             if (!result)
@@ -845,6 +893,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!string.IsNullOrEmpty(value))
         {
+            // Clear previous app's data before populating the new app's info
+            HomebrewChannelTitle = string.Empty;
+            HomebrewTitleId = string.Empty;
+            HomebrewCoverPath = string.Empty;
             HomebrewAppFolder = value;
             TryAutoPopulateAppInfo(value);
         }
@@ -854,7 +906,30 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         UpdateCanCreateHomebrew();
     }
-    
+
+    partial void OnHomebrewCoverPathChanged(string value)
+    {
+        LoadHomebrewIconPreview(value);
+    }
+
+    private void LoadHomebrewIconPreview(string? imagePath)
+    {
+        if (!string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath))
+        {
+            try
+            {
+                using var stream = File.OpenRead(imagePath);
+                HomebrewIconPreview = new Bitmap(stream);
+                return;
+            }
+            catch
+            {
+                // Ignore unreadable images
+            }
+        }
+        HomebrewIconPreview = null;
+    }
+
     partial void OnHomebrewChannelTitleChanged(string value)
     {
         UpdateCanCreateHomebrew();
@@ -1045,15 +1120,88 @@ public partial class MainWindowViewModel : ViewModelBase
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "WiiGSC Shortcuts");
             Directory.CreateDirectory(outputDir);
-            
-            var sanitizedName = string.Join("_", HomebrewChannelTitle.Split(Path.GetInvalidFileNameChars()));
+
+            // Also strip FAT32-unsafe chars (|, ?, *, etc.) that are valid on macOS but not on SD cards
+            var fat32Unsafe = new char[] { '|', '?', '*', '<', '>', '"', '\\' };
+            var cleanTitle = string.Join("", HomebrewChannelTitle.Split(fat32Unsafe)).Trim();
+            var sanitizedName = string.Join("_", cleanTitle.Split(Path.GetInvalidFileNameChars()));
             var outputPath = Path.Combine(outputDir, $"{sanitizedName} [{HomebrewTitleId}].wad");
-            
-            // TODO: Implement actual WAD creation when ForwardMii templates are available
-            await Task.Delay(500);
-            
-            StatusText = "Homebrew forwarder WAD creation not yet implemented.";
-            ProgressValue = 100;
+
+            ProgressValue = 20;
+            StatusText = "Generating SDSDHC forwarder DOL...";
+
+            // Auto-detect boot.dol vs boot.elf by checking what exists in the app folder
+            bool forwardToElf = false;
+            if (!string.IsNullOrWhiteSpace(HomebrewAppsDirectory))
+            {
+                var appPath = Path.Combine(HomebrewAppsDirectory, HomebrewAppFolder);
+                if (Directory.Exists(appPath))
+                {
+                    bool hasDol = File.Exists(Path.Combine(appPath, "boot.dol"));
+                    bool hasElf = File.Exists(Path.Combine(appPath, "boot.elf"));
+                    // Prefer boot.dol if both exist, use boot.elf if only elf exists
+                    forwardToElf = !hasDol && hasElf;
+                }
+            }
+
+            var wadService = new WadCreationService();
+            string? error = await wadService.CreateHomebrewForwarderWad(
+                HomebrewAppFolder,
+                outputPath,
+                HomebrewChannelTitle,
+                HomebrewTitleId,
+                forwardToElf: forwardToElf,
+                imagePath: !string.IsNullOrEmpty(HomebrewCoverPath) ? HomebrewCoverPath : null);
+
+            ProgressValue = 90;
+
+            if (error == null)
+            {
+                // Validate the created WAD
+                var validationResult = wadService.ValidateWad(outputPath);
+
+                ProgressValue = 100;
+
+                if (validationResult.IsValid)
+                {
+                    StatusText = $"Homebrew forwarder created: {Path.GetFileName(outputPath)}";
+                    if (validationResult.Warnings.Count > 0)
+                        StatusText += $" — Warnings: {string.Join("; ", validationResult.Warnings)}";
+                }
+                else
+                {
+                    StatusText = $"WAD created but validation found issues: {string.Join("; ", validationResult.Errors)}";
+                }
+
+                // Open the output directory in Finder
+                if (_window != null)
+                {
+                    await Task.Delay(500);
+
+                    if (OperatingSystem.IsMacOS())
+                    {
+                        var processInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "open",
+                            Arguments = $"\"{outputDir}\"",
+                            UseShellExecute = false
+                        };
+                        System.Diagnostics.Process.Start(processInfo);
+                    }
+                    else if (OperatingSystem.IsWindows())
+                    {
+                        System.Diagnostics.Process.Start("explorer", outputDir);
+                    }
+                    else if (OperatingSystem.IsLinux())
+                    {
+                        System.Diagnostics.Process.Start("xdg-open", outputDir);
+                    }
+                }
+            }
+            else
+            {
+                StatusText = $"Failed: {error}";
+            }
         }
         catch (Exception ex)
         {
@@ -1111,9 +1259,11 @@ public partial class MainWindowViewModel : ViewModelBase
             HasWadWarnings = false;
             HasWadErrors = false;
             HasWadBannerImage = false;
+            HasWadExtractedIcon = false;
             HasWadDescription = false;
             HasWadInstallInstructions = false;
             WadBannerImage = null;
+            WadExtractedIcon = null;
             WadWarnings.Clear();
             WadErrors.Clear();
             
@@ -1191,11 +1341,16 @@ public partial class MainWindowViewModel : ViewModelBase
                                 WadBlocks = "Unknown";
                                 WadType = "Unknown";
                             }
-                            
+
                             // Try to get channel title from banner
+                            // IMET order: 0=Japanese, 1=English, 2=German, 3=French, 4=Spanish, 5=Italian, 6=Dutch
                             if (wad.HasBanner && wad.ChannelTitles.Length > 0)
                             {
-                                WadChannelTitle = wad.ChannelTitles[0];
+                                // Prefer English (index 1), fall back to first non-empty title
+                                if (wad.ChannelTitles.Length > 1 && !string.IsNullOrEmpty(wad.ChannelTitles[1]))
+                                    WadChannelTitle = wad.ChannelTitles[1];
+                                else
+                                    WadChannelTitle = wad.ChannelTitles.FirstOrDefault(t => !string.IsNullOrEmpty(t)) ?? "(No title)";
                             }
                             else
                             {
@@ -1273,6 +1428,27 @@ public partial class MainWindowViewModel : ViewModelBase
                                 WadBannerInfo = "Failed to extract";
                                 WadContentSizes = "Failed to extract";
                                 HasDebugInfo = false;
+                            }
+
+                            // Try to extract icon from WAD banner
+                            try
+                            {
+                                if (wad.HasBanner)
+                                {
+                                    var extractedIcon = ExtractIconFromWad(wad);
+                                    if (extractedIcon != null)
+                                    {
+                                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                        {
+                                            WadExtractedIcon = extractedIcon;
+                                            HasWadExtractedIcon = true;
+                                        });
+                                    }
+                                }
+                            }
+                            catch (Exception iconEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Icon extraction failed: {iconEx.Message}");
                             }
 
                             // Fetch cover art from GameTDB
@@ -1481,12 +1657,374 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     
     [RelayCommand]
-    private Task DismissWitWarning()
+    private void DismissWitWarning()
     {
         ShowWitWarning = false;
+    }
+
+    // ─── Bulk Generation ───────────────────────────────────────────────
+
+    partial void OnBulkAllSelectedChanged(bool value)
+    {
+        foreach (var game in BulkGames)
+        {
+            game.IsSelected = value;
+        }
+    }
+
+    partial void OnBulkOcarinaAllChanged(bool value)
+    {
+        foreach (var game in BulkGames)
+        {
+            if (game.IsSelected)
+            {
+                game.EnableOcarina = value;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseBulkFolder()
+    {
+        if (_window == null) return;
+
+        var options = new FolderPickerOpenOptions
+        {
+            Title = "Select WBFS / Game Folder",
+            AllowMultiple = false
+        };
+
+        var folders = await _window.StorageProvider.OpenFolderPickerAsync(options);
+        if (folders.Count > 0)
+        {
+            BulkFolderPath = folders[0].Path.LocalPath;
+            await ScanBulkFolder();
+        }
+    }
+
+    [RelayCommand]
+    private Task ScanBulkFolder()
+    {
+        BulkGames.Clear();
+        HasBulkGames = false;
+
+        if (string.IsNullOrEmpty(BulkFolderPath) || !Directory.Exists(BulkFolderPath))
+        {
+            StatusText = "Please select a folder first";
+            return Task.CompletedTask;
+        }
+
+        StatusText = "Scanning for games...";
+        IsOperationInProgress = true;
+
+        try
+        {
+            var gameFiles = new List<string>();
+
+            // Find .wbfs and .iso files in subfolders (USB loader structure)
+            foreach (var dir in Directory.GetDirectories(BulkFolderPath))
+            {
+                gameFiles.AddRange(Directory.GetFiles(dir, "*.wbfs"));
+                gameFiles.AddRange(Directory.GetFiles(dir, "*.iso"));
+            }
+
+            // Also check root for loose files
+            gameFiles.AddRange(Directory.GetFiles(BulkFolderPath, "*.wbfs"));
+            gameFiles.AddRange(Directory.GetFiles(BulkFolderPath, "*.iso"));
+
+            // Deduplicate by full path and filter out macOS resource fork files (._*)
+            gameFiles = gameFiles
+                .Where(f => !Path.GetFileName(f).StartsWith("._"))
+                .Distinct()
+                .ToList();
+
+            // Track disc IDs already added to avoid duplicate games
+            var seenDiscIds = new HashSet<string>();
+
+            foreach (var filePath in gameFiles.OrderBy(f => Path.GetFileNameWithoutExtension(f)))
+            {
+                var fileName = Path.GetFileNameWithoutExtension(filePath);
+                // Also check parent folder name for disc ID
+                var parentName = Path.GetFileName(Path.GetDirectoryName(filePath) ?? "");
+                var nameToCheck = fileName;
+                if (!System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\[([A-Z0-9]{4,6})\]"))
+                {
+                    nameToCheck = parentName; // Try parent folder name
+                }
+
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    nameToCheck, @"(.+?)\s*\[([A-Z0-9]{4,6})\]");
+
+                string gameName;
+                string discId;
+
+                if (match.Success)
+                {
+                    gameName = match.Groups[1].Value.Trim();
+                    discId = match.Groups[2].Value;
+                }
+                else
+                {
+                    gameName = fileName;
+                    discId = "UNKN";
+                }
+
+                // Skip duplicate disc IDs (split WBFS files, same game in multiple locations)
+                if (discId != "UNKN" && !seenDiscIds.Add(discId))
+                    continue;
+
+                var region = BulkGameItem.DetectRegion(discId);
+                var language = BulkGameItem.DetectLanguage(region);
+
+                var item = new BulkGameItem
+                {
+                    GameName = gameName,
+                    DiscId = discId,
+                    Region = region,
+                    Language = language,
+                    FilePath = filePath,
+                    IsSelected = true
+                };
+
+                BulkGames.Add(item);
+            }
+
+            HasBulkGames = BulkGames.Count > 0;
+            BulkTotalGames = BulkGames.Count;
+            StatusText = $"Found {BulkGames.Count} game(s)";
+
+            // Download cover art in background
+            _ = DownloadBulkCoversAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Error scanning folder: {ex.Message}";
+        }
+        finally
+        {
+            IsOperationInProgress = false;
+        }
+
         return Task.CompletedTask;
     }
-    
+
+    private async Task DownloadBulkCoversAsync()
+    {
+        foreach (var game in BulkGames)
+        {
+            if (game.DiscId == "UNKN") continue;
+            try
+            {
+                var cover = await _gameTDBService.Get3DCoverAsync(game.DiscId)
+                         ?? await _gameTDBService.GetCoverArtAsync(game.DiscId);
+                if (cover != null)
+                {
+                    game.CoverArt = cover;
+                }
+            }
+            catch { /* non-critical */ }
+        }
+    }
+
+    [RelayCommand]
+    private async Task BulkGenerate()
+    {
+        var selected = BulkGames.Where(g => g.IsSelected && g.DiscId != "UNKN").ToList();
+        if (selected.Count == 0)
+        {
+            StatusText = "No games selected for bulk generation";
+            return;
+        }
+
+        IsBulkGenerating = true;
+        IsOperationInProgress = true;
+        BulkCompletedGames = 0;
+        BulkFailedGames = 0;
+
+        var outputDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "WiiGSC Shortcuts");
+        Directory.CreateDirectory(outputDir);
+
+        var wadService = new WadCreationService();
+
+        for (int i = 0; i < selected.Count; i++)
+        {
+            var game = selected[i];
+            game.IsProcessing = true;
+            game.Status = "Creating WAD...";
+            BulkProgressText = $"Processing {i + 1} of {selected.Count}: {game.GameName}";
+            ProgressValue = (double)(i) / selected.Count * 100;
+            StatusText = BulkProgressText;
+
+            try
+            {
+                var cleanName = game.GameName.Replace(":", "");
+                var safeName = string.Join("_", cleanName.Split(Path.GetInvalidFileNameChars()));
+                var outputPath = Path.Combine(outputDir, $"{safeName} [{game.DiscId}].wad");
+
+                var result = await wadService.CreateGameShortcutWad(
+                    gameFilePath: game.FilePath,
+                    outputPath: outputPath,
+                    channelTitle: game.GameName,
+                    titleId: game.TitleId,
+                    discId: game.DiscId,
+                    loaderId: BulkSelectedLoader.Id,
+                    witService: _witService,
+                    enableOcarina: game.EnableOcarina
+                );
+
+                if (result)
+                {
+                    game.Status = "Done";
+                    game.IsComplete = true;
+                    BulkCompletedGames++;
+                }
+                else
+                {
+                    game.Status = "Failed";
+                    game.HasError = true;
+                    BulkFailedGames++;
+                }
+            }
+            catch (Exception ex)
+            {
+                game.Status = $"Error: {ex.Message}";
+                game.HasError = true;
+                BulkFailedGames++;
+            }
+            finally
+            {
+                game.IsProcessing = false;
+            }
+        }
+
+        ProgressValue = 100;
+        BulkProgressText = $"Complete: {BulkCompletedGames} succeeded, {BulkFailedGames} failed";
+        StatusText = BulkProgressText;
+
+        // Open output folder
+        if (OperatingSystem.IsMacOS())
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "open",
+                Arguments = $"\"{outputDir}\"",
+                UseShellExecute = false
+            });
+        }
+
+        IsBulkGenerating = false;
+        IsOperationInProgress = false;
+    }
+
+    /// <summary>
+    /// Extracts the icon image from a WAD's banner content.
+    /// Pipeline: outer U8 → icon.bin → strip IMD5 → LZ77 decompress → inner U8 → TPL → RGBA → Avalonia Bitmap
+    /// </summary>
+    private static Avalonia.Media.Imaging.Bitmap? ExtractIconFromWad(WAD wad)
+    {
+        if (!wad.HasBanner) return null;
+
+        var bannerApp = wad.BannerApp;
+        var strings = bannerApp.StringTable;
+        var dataArrays = bannerApp.Data;
+
+        // Find icon.bin in the outer U8
+        int iconIndex = -1;
+        for (int i = 0; i < strings.Length; i++)
+        {
+            if (strings[i].Equals("icon.bin", StringComparison.OrdinalIgnoreCase))
+            {
+                iconIndex = i;
+                break;
+            }
+        }
+
+        if (iconIndex < 0 || iconIndex >= dataArrays.Length)
+            return null;
+
+        byte[] iconBinData = dataArrays[iconIndex];
+        if (iconBinData == null || iconBinData.Length < 40)
+            return null;
+
+        // Strip IMD5 header (32 bytes) and find LZ77 data
+        int lz77Offset = -1;
+        for (int i = 0; i < Math.Min(iconBinData.Length - 3, 0x40); i++)
+        {
+            if (iconBinData[i] == 'L' && iconBinData[i + 1] == 'Z' &&
+                iconBinData[i + 2] == '7' && iconBinData[i + 3] == '7')
+            {
+                lz77Offset = i;
+                break;
+            }
+        }
+
+        byte[] innerU8Data;
+        if (lz77Offset >= 0)
+        {
+            innerU8Data = Wii.Lz77.Decompress(iconBinData, lz77Offset);
+        }
+        else
+        {
+            // Not LZ77 compressed — try raw after IMD5
+            innerU8Data = new byte[iconBinData.Length - 32];
+            Array.Copy(iconBinData, 32, innerU8Data, 0, innerU8Data.Length);
+        }
+
+        // Parse inner U8 archive
+        var innerU8 = libWiiSharp.U8.Load(innerU8Data);
+        var innerStrings = innerU8.StringTable;
+        var innerData = innerU8.Data;
+
+        // Find first TPL file in the inner U8 (usually in arc/timg/)
+        int tplIndex = -1;
+        for (int i = 0; i < innerStrings.Length; i++)
+        {
+            if (innerStrings[i].EndsWith(".tpl", StringComparison.OrdinalIgnoreCase))
+            {
+                tplIndex = i;
+                break;
+            }
+        }
+
+        if (tplIndex < 0 || tplIndex >= innerData.Length)
+            return null;
+
+        byte[] tplData = innerData[tplIndex];
+        if (tplData == null || tplData.Length < 16)
+            return null;
+
+        // Load TPL and extract raw RGBA data (cross-platform, no System.Drawing)
+        var tpl = TPL.Load(tplData);
+        byte[] rgbaData = tpl.ExtractTextureBytes(0, out int width, out int height);
+
+        if (rgbaData == null || width <= 0 || height <= 0)
+            return null;
+
+        // Convert RGBA → BGRA for Avalonia WriteableBitmap (Bgra8888 format)
+        for (int i = 0; i < rgbaData.Length; i += 4)
+        {
+            byte r = rgbaData[i];
+            byte b = rgbaData[i + 2];
+            rgbaData[i] = b;       // B
+            rgbaData[i + 2] = r;   // R
+        }
+
+        var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(
+            new Avalonia.PixelSize(width, height),
+            new Avalonia.Vector(96, 96),
+            Avalonia.Platform.PixelFormat.Bgra8888,
+            Avalonia.Platform.AlphaFormat.Unpremul);
+
+        using (var fb = bitmap.Lock())
+        {
+            System.Runtime.InteropServices.Marshal.Copy(rgbaData, 0, fb.Address, Math.Min(rgbaData.Length, fb.RowBytes * height));
+        }
+
+        return bitmap;
+    }
+
     private static string FormatFileSize(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB" };

@@ -902,11 +902,15 @@ namespace libWiiSharp
 
         private int getRealSize(byte[] data)
         {
+            if (data.Length < 4) return data.Length;
+
             if (data[0] == 'I' && data[1] == 'M' && data[2] == 'D' && data[3] == '5')
-                if (data[0x20] == 'L' && data[0x21] == 'Z' && data[0x22] == '7' && data[0x23] == '7')
+            {
+                if (data.Length > 0x27 && data[0x20] == 'L' && data[0x21] == 'Z' && data[0x22] == '7' && data[0x23] == '7')
                     return (BitConverter.ToInt32(data, 0x24)) >> 8;
                 else 
                     return data.Length - 32;
+            }
 
             return data.Length;
         }

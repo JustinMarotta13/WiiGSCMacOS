@@ -156,7 +156,10 @@ namespace Wii
             ms.Write(imd5, 0, imd5.Length);
             ms.Write(size, 0, size.Length);
 
-            ms.Seek(0x10, SeekOrigin.Begin);
+            // IMD5 layout per WiiBrew spec: magic(4) + size(4) + zeroes(8) + md5_hash(16) + payload
+            // Hash is at offset 0x10, total header = 32 bytes
+            byte[] zeroPadding = new byte[8];
+            ms.Write(zeroPadding, 0, zeroPadding.Length);
             ms.Write(hash, 0, hash.Length);
 
             ms.Write(u8archive, 0, u8archive.Length);
@@ -175,8 +178,9 @@ namespace Wii
         public static byte[] AddHeaderIMET(byte[] nullapp, string[] channeltitles, int[] sizes)
         {
             if (channeltitles.Length < 7) return nullapp;
+            // Truncate titles longer than 20 characters rather than silently returning raw archive
             for (int i = 0; i < channeltitles.Length; i++)
-                if (channeltitles[i].Length > 20) return nullapp;
+                if (channeltitles[i].Length > 20) channeltitles[i] = channeltitles[i].Substring(0, 20);
 
             MemoryStream ms = new MemoryStream();
             MD5 md5 = MD5.Create();
@@ -242,6 +246,8 @@ namespace Wii
 
             byte[] crypto = new byte[16];
 
+            // IMET block starts at offset 0x80 (128), preceded by 128 zero bytes
+            // The Wii reads IMET magic at exactly byte 128 of the 00000000.app file
             ms.Seek(128, SeekOrigin.Begin);
             ms.Write(imet, 0, imet.Length);
             ms.Write(unknown, 0, unknown.Length);
@@ -262,7 +268,7 @@ namespace Wii
             ms.Write(crypto, 0, crypto.Length);
 
             byte[] tohash = ms.ToArray();
-            crypto = md5.ComputeHash(tohash, 0x40, 0x600);
+            crypto = md5.ComputeHash(tohash, 0x80, 0x600);
 
             ms.Seek(-16, SeekOrigin.Current);
             ms.Write(crypto, 0, crypto.Length);
@@ -335,8 +341,9 @@ namespace Wii
         public static byte[] PackU8(string folder, out int bannersize, out int iconsize, out int soundsize)
         {
             int datapad = 32, stringtablepad = 32; //Biggie seems to use these paddings, so let's do it, too ;)
+            char sep = Path.DirectorySeparatorChar;
             string rootpath = folder;
-            if (rootpath[rootpath.Length - 1] != '\\') rootpath = rootpath + "\\";
+            if (rootpath[rootpath.Length - 1] != sep) rootpath = rootpath + sep;
 
             bannersize = 0; iconsize = 0; soundsize = 0;
 
@@ -373,8 +380,8 @@ namespace Wii
             {
                 files[i] = files[i].Remove(0, rootpath.Length - 1);
 
-                recursion = Tools.CountCharsInString(files[i], '\\') - 1;
-                name = files[i].Remove(0, files[i].LastIndexOf('\\') + 1);
+                recursion = Tools.CountCharsInString(files[i], sep) - 1;
+                name = files[i].Remove(0, files[i].LastIndexOf(sep) + 1);
 
                 byte[] temp1 = BitConverter.GetBytes((UInt16)stringtable.Length); Array.Reverse(temp1);
                 tempnode[2] = temp1[0];
@@ -427,12 +434,15 @@ namespace Wii
 
                         if (lzoffset != -1)
                         {
-                            bannersize = BitConverter.ToInt32(new byte[] { tempfile[lzoffset + 5], tempfile[lzoffset + 6], tempfile[lzoffset + 7], tempfile[lzoffset + 8] }, 0);
+                            // LZ77 header: "LZ77" (4 bytes) + u32 LE ((decompSize << 8) | 0x10)
+                            // Bytes 5,6,7 contain the 24-bit decompressed size in little-endian
+                            bannersize = tempfile[lzoffset + 5] | (tempfile[lzoffset + 6] << 8) | (tempfile[lzoffset + 7] << 16);
                         }
                         else
                         {
+                            // IMD5 header is 24 bytes (magic+size+hash); subtract to get content size
                             FileInfo fibanner = new FileInfo(rootpath + files[i]);
-                            bannersize = (int)fibanner.Length - 32;
+                            bannersize = Math.Max(0, (int)fibanner.Length - 32);
                         }
                     }
                     else if (files[i].EndsWith("icon.bin"))
@@ -452,12 +462,13 @@ namespace Wii
 
                         if (lzoffset != -1)
                         {
-                            iconsize = BitConverter.ToInt32(new byte[] { tempfile[lzoffset + 5], tempfile[lzoffset + 6], tempfile[lzoffset + 7], tempfile[lzoffset + 8] }, 0);
+                            iconsize = tempfile[lzoffset + 5] | (tempfile[lzoffset + 6] << 8) | (tempfile[lzoffset + 7] << 16);
                         }
                         else
                         {
+                            // IMD5 header is 24 bytes
                             FileInfo fiicon = new FileInfo(rootpath + files[i]);
-                            iconsize = (int)fiicon.Length - 32;
+                            iconsize = Math.Max(0, (int)fiicon.Length - 32);
                         }
                     }
                     else if (files[i].EndsWith("sound.bin"))
@@ -478,12 +489,13 @@ namespace Wii
 
                         if (lzoffset != -1)
                         {
-                            soundsize = BitConverter.ToInt32(new byte[] { tempfile[lzoffset + 5], tempfile[lzoffset + 6], tempfile[lzoffset + 7], tempfile[lzoffset + 8] }, 0);
+                            soundsize = tempfile[lzoffset + 5] | (tempfile[lzoffset + 6] << 8) | (tempfile[lzoffset + 7] << 16);
                         }
                         else
                         {
+                            // Sound.bin is IMD5-wrapped (24 byte header); no LZ77 = empty/silent sound, size=0
                             FileInfo fisound = new FileInfo(rootpath + files[i]);
-                            soundsize = (int)fisound.Length - 32;
+                            soundsize = Math.Max(0, (int)fisound.Length - 32);
                         }
                     }
 
@@ -584,10 +596,11 @@ namespace Wii
         /// <param name="unpackpath"></param>
         public static void UnpackU8(byte[] u8archive, string unpackpath)
         {
+            char sep = Path.DirectorySeparatorChar;
             int lz77offset = Lz77.GetLz77Offset(u8archive);
             if (lz77offset != -1) { u8archive = Lz77.Decompress(u8archive, lz77offset); }
 
-            if (unpackpath[unpackpath.Length - 1] != '\\') { unpackpath = unpackpath + "\\"; }
+            if (unpackpath[unpackpath.Length - 1] != sep) { unpackpath = unpackpath + sep; }
             if (!Directory.Exists(unpackpath)) Directory.CreateDirectory(unpackpath);
 
             int u8offset = -1;
@@ -654,7 +667,7 @@ namespace Wii
                     switch (nodes[y, 0])
                     {
                         case "0100":
-                            if (dirs[dirindex][dirs[dirindex].Length - 1] != '\\') { dirs[dirindex] = dirs[dirindex] + "\\"; }
+                            if (dirs[dirindex][dirs[dirindex].Length - 1] != sep) { dirs[dirindex] = dirs[dirindex] + sep; }
                             Directory.CreateDirectory(dirs[dirindex] + nodes[y, 4]);
                             dirs[dirindex + 1] = dirs[dirindex] + nodes[y, 4];
                             dirindex++;
@@ -664,7 +677,7 @@ namespace Wii
                             int filepos = u8offset + Tools.HexStringToInt(nodes[y, 2]);
                             int filesize = Tools.HexStringToInt(nodes[y, 3]);
 
-                            using (FileStream fs = new FileStream(dirs[dirindex] + "\\" + nodes[y, 4], FileMode.Create))
+                            using (FileStream fs = new FileStream(dirs[dirindex] + sep + nodes[y, 4], FileMode.Create))
                             {
                                 fs.Write(u8archive, filepos, filesize);
                             }
@@ -848,7 +861,8 @@ namespace Wii
             int lz77offset = Lz77.GetLz77Offset(u8archive);
             if (lz77offset != -1) { u8archive = Lz77.Decompress(u8archive, lz77offset); }
 
-            if (unpackpath[unpackpath.Length - 1] != '\\') { unpackpath = unpackpath + "\\"; }
+            char sep = Path.DirectorySeparatorChar;
+            if (unpackpath[unpackpath.Length - 1] != sep) { unpackpath = unpackpath + sep; }
             if (!Directory.Exists(unpackpath)) Directory.CreateDirectory(unpackpath);
 
             int u8offset = -1;
@@ -1132,6 +1146,13 @@ namespace Wii
             int i, c, len, r, s, last_match_length, code_buf_ptr;
             int[] code_buf = new int[17];
             int mask;
+
+            // Reset static state from previous compressions
+            textsize = 0;
+            codesize = 0;
+            match_position = 0;
+            match_length = 0;
+
             UInt32 filesize = ((Convert.ToUInt32(file.Length)) << 8) + 0x10;
             byte[] filesizebytes = BitConverter.GetBytes(filesize);
 

@@ -1,308 +1,456 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:WiiGSC.UI.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
-        x:Class="WiiGSC.UI.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Title="WiiGSC - Wii Game Shortcut Creator"
-        Width="900" Height="700"
-        MinWidth="800" MinHeight="650">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:WiiGSC.UI.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+    x:Class="WiiGSC.UI.Views.MainWindow"
+    x:DataType="vm:MainWindowViewModel"
+    Title="WiiGSC - Wii Game Shortcut Creator"
+    WindowState="Maximized"
+    MinWidth="800" MinHeight="650">
 
     <Design.DataContext>
-        <vm:MainWindowViewModel/>
+        <vm:MainWindowViewModel />
     </Design.DataContext>
 
     <DockPanel>
-        <!-- Menu Bar -->
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="_File">
-                <MenuItem Header="Open _ISO..." Command="{Binding OpenIsoCommand}" />
-                <MenuItem Header="Open _Banner..." Command="{Binding OpenBannerCommand}" />
-                <MenuItem Header="Open _WBFS Drive..." Command="{Binding OpenWbfsCommand}" />
-                <Separator />
-                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Language">
-                <MenuItem Header="_English" Command="{Binding ChangeLanguageCommand}" CommandParameter="English" />
-                <MenuItem Header="_Spanish" Command="{Binding ChangeLanguageCommand}" CommandParameter="Spanish" />
-                <MenuItem Header="_French" Command="{Binding ChangeLanguageCommand}" CommandParameter="French" />
-                <MenuItem Header="_German" Command="{Binding ChangeLanguageCommand}" CommandParameter="German" />
-            </MenuItem>
-            <MenuItem Header="_Help">
-                <MenuItem Header="_About" Command="{Binding AboutCommand}" />
-            </MenuItem>
-        </Menu>
-
         <!-- Status Bar -->
         <Border DockPanel.Dock="Bottom" Background="#2D2D2D" Padding="8,4">
             <DockPanel>
-                <TextBlock Text="{Binding StatusText}" 
-                           Foreground="White"
-                           VerticalAlignment="Center" />
-                <ProgressBar Value="{Binding ProgressValue}" 
-                           Maximum="100"
-                           Width="200"
-                           Height="18"
-                           HorizontalAlignment="Right"
-                           IsVisible="{Binding IsOperationInProgress}" />
+                <TextBlock Text="{Binding StatusText}"
+                    Foreground="White"
+                    VerticalAlignment="Center" />
+                <ProgressBar Value="{Binding ProgressValue}"
+                    Maximum="100"
+                    Width="200"
+                    Height="18"
+                    HorizontalAlignment="Right"
+                    IsVisible="{Binding IsOperationInProgress}" />
             </DockPanel>
         </Border>
 
         <!-- Main Content -->
         <TabControl>
-            <!-- Game Shortcut Tab -->
-            <TabItem Header="Game Shortcut">
-                <ScrollViewer>
-                    <StackPanel Margin="16" Spacing="12">
-                
-                <!-- Source Selection -->
-                <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Source" FontWeight="Bold" FontSize="14" />
-                        
-                        <RadioButton Content="ISO File" 
-                                   IsChecked="{Binding IsIsoMode}"
-                                   GroupName="SourceMode" />
-                        <StackPanel Orientation="Horizontal" Spacing="8" 
-                                  IsVisible="{Binding IsIsoMode}"
-                                  Margin="24,0,0,0">
-                            <TextBox Text="{Binding IsoFilePath}" 
-                                   Watermark="Select ISO file..."
-                                   Width="500" />
-                            <Button Content="Browse..." Command="{Binding BrowseIsoCommand}" />
-                        </StackPanel>
+            <!-- Game Shortcuts Tab -->
+            <TabItem Header="Game Shortcuts">
+                <DockPanel>
+                    <!-- Source Selection - always at top -->
+                    <Border DockPanel.Dock="Top" BorderBrush="Gray" BorderThickness="1" Padding="12"
+                        CornerRadius="4" Margin="16,16,16,0">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Source" FontWeight="Bold" FontSize="14" />
 
-                        <RadioButton Content="Banner File" 
-                                   IsChecked="{Binding IsBannerMode}"
-                                   GroupName="SourceMode" />
-                        <StackPanel Orientation="Horizontal" Spacing="8"
-                                  IsVisible="{Binding IsBannerMode}"
-                                  Margin="24,0,0,0">
-                            <TextBox Text="{Binding BannerFilePath}" 
-                                   Watermark="Select banner file..."
-                                   Width="500" />
-                            <Button Content="Browse..." Command="{Binding BrowseBannerCommand}" />
-                        </StackPanel>
-
-                        <RadioButton Content="WBFS Drive" 
-                                   IsChecked="{Binding IsWbfsMode}"
-                                   GroupName="SourceMode" />
-                        <StackPanel IsVisible="{Binding IsWbfsMode}"
-                                  Margin="24,0,0,0" Spacing="8">
-                            <TextBlock Text="WBFS Folder:" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox Text="{Binding WbfsFolderPath}" 
-                                       Width="300" 
-                                       IsReadOnly="True"
-                                       Watermark="Select WBFS folder..." />
-                                <Button Content="Browse..." 
-                                      Command="{Binding BrowseWbfsFolderCommand}" 
-                                      Width="100" />
+                            <RadioButton Content="ISO File"
+                                IsChecked="{Binding IsIsoMode}"
+                                GroupName="SourceMode" />
+                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding IsIsoMode}"
+                                Margin="24,0,0,0">
+                                <TextBox Text="{Binding IsoFilePath}"
+                                    Watermark="Select ISO file..."
+                                    Width="500" />
+                                <Button Content="Browse..." Command="{Binding BrowseIsoCommand}" />
                             </StackPanel>
-                            <TextBlock Text="Select Game:" Margin="0,8,0,0" />
-                            <ComboBox ItemsSource="{Binding WbfsDrives}"
-                                    SelectedItem="{Binding SelectedWbfsDrive}"
-                                    Width="300"
-                                    HorizontalAlignment="Left" />
-                            <Button Content="Refresh" 
-                                  Command="{Binding RefreshWbfsCommand}" 
-                                  Width="100" 
-                                  HorizontalAlignment="Left" 
-                                  Margin="0,4,0,0" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
 
-                <!-- Game Information -->
-                <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4"
-                      IsVisible="{Binding IsGameLoaded}">
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
-                        <!-- Cover Art -->
-                        <Border Grid.Column="0" 
-                                BorderBrush="Gray" 
-                                BorderThickness="1" 
+                            <RadioButton Content="Banner File"
+                                IsChecked="{Binding IsBannerMode}"
+                                GroupName="SourceMode" />
+                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding IsBannerMode}"
+                                Margin="24,0,0,0">
+                                <TextBox Text="{Binding BannerFilePath}"
+                                    Watermark="Select banner file..."
+                                    Width="500" />
+                                <Button Content="Browse..." Command="{Binding BrowseBannerCommand}" />
+                            </StackPanel>
+
+                            <RadioButton Content="Game Folder"
+                                IsChecked="{Binding IsWbfsMode}"
+                                GroupName="SourceMode" />
+                            <StackPanel IsVisible="{Binding IsWbfsMode}"
+                                Margin="24,0,0,0" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBox Text="{Binding BulkFolderPath}"
+                                        Width="500"
+                                        IsReadOnly="True"
+                                        Watermark="Select folder with WBFS/ISO games..." />
+                                    <Button Content="Browse..."
+                                        Command="{Binding BrowseBulkFolderCommand}" />
+                                    <Button Content="Rescan"
+                                        Command="{Binding ScanBulkFolderCommand}"
+                                        IsEnabled="{Binding HasBulkGames}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ═══ Single Game Mode (ISO / Banner) ═══ -->
+                    <ScrollViewer IsVisible="{Binding !IsWbfsMode}">
+                        <StackPanel Margin="16" Spacing="12">
+
+                            <!-- Game Information -->
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="12"
                                 CornerRadius="4"
-                                Width="160"
-                                Height="224"
-                                Background="#F0F0F0"
-                                VerticalAlignment="Top">
-                            <Panel>
-                                <Image Source="{Binding CoverArt}" 
-                                     Stretch="Uniform"
-                                     IsVisible="{Binding CoverArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <TextBlock Text="No Cover" 
-                                         HorizontalAlignment="Center" 
-                                         VerticalAlignment="Center"
-                                         Foreground="Gray"
-                                         IsVisible="{Binding CoverArt, Converter={x:Static ObjectConverters.IsNull}}" />
-                                <ProgressBar IsIndeterminate="True" 
-                                           IsVisible="{Binding IsLoadingCover}"
-                                           VerticalAlignment="Bottom" 
-                                           Margin="4" />
-                            </Panel>
+                                IsVisible="{Binding IsGameLoaded}">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                                    <!-- Cover Art -->
+                                    <Border Grid.Column="0"
+                                        BorderBrush="Gray"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Width="160"
+                                        Height="224"
+                                        Background="#F0F0F0"
+                                        VerticalAlignment="Top">
+                                        <Panel>
+                                            <Image Source="{Binding CoverArt}"
+                                                Stretch="Uniform"
+                                                IsVisible="{Binding CoverArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            <TextBlock Text="No Cover"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Foreground="Gray"
+                                                IsVisible="{Binding CoverArt, Converter={x:Static ObjectConverters.IsNull}}" />
+                                            <ProgressBar IsIndeterminate="True"
+                                                IsVisible="{Binding IsLoadingCover}"
+                                                VerticalAlignment="Bottom"
+                                                Margin="4" />
+                                        </Panel>
+                                    </Border>
+
+                                    <!-- Game Info -->
+                                    <StackPanel Grid.Column="1" Spacing="4">
+                                        <TextBlock Text="Game Information" FontWeight="Bold"
+                                            FontSize="14" />
+                                        <Grid ColumnDefinitions="120,*"
+                                            RowDefinitions="Auto,Auto,Auto" VerticalAlignment="Top">
+                                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                                Text="Game Name:" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="0" Grid.Column="1"
+                                                Text="{Binding GameName}"
+                                                FontWeight="Bold"
+                                                IsReadOnly="True"
+                                                BorderThickness="0"
+                                                Background="Transparent"
+                                                Padding="0" />
+
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Disc ID:"
+                                                VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="1" Grid.Column="1"
+                                                Text="{Binding DiscId}"
+                                                IsReadOnly="True"
+                                                BorderThickness="0"
+                                                Background="Transparent"
+                                                Padding="0" />
+
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Region:"
+                                                VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="2" Grid.Column="1"
+                                                Text="{Binding GameRegion}"
+                                                IsReadOnly="True"
+                                                BorderThickness="0"
+                                                Background="Transparent"
+                                                Padding="0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Configuration -->
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="12"
+                                CornerRadius="4">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Configuration" FontWeight="Bold" FontSize="14" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Loader:" Width="120"
+                                            VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding Loaders}"
+                                            SelectedItem="{Binding SelectedLoader}"
+                                            Width="300">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Name}"
+                                                        ToolTip.Tip="{Binding Description}"
+                                                        Background="Transparent" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Title ID:" Width="120"
+                                            VerticalAlignment="Center" />
+                                        <TextBox Text="{Binding TitleId}"
+                                            Width="120"
+                                            Watermark="e.g., RMCE" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Language:" Width="120"
+                                            VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding Languages}"
+                                            SelectedItem="{Binding SelectedLanguage}"
+                                            Width="200" />
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Region:" Width="120"
+                                            VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding Regions}"
+                                            SelectedItem="{Binding SelectedRegion}"
+                                            Width="200" />
+                                    </StackPanel>
+
+                                    <CheckBox Content="Enable Ocarina (Cheat Codes)"
+                                        IsChecked="{Binding EnableOcarina}"
+                                        Margin="120,4,0,0" />
+
+                                    <CheckBox Content="Force Video Mode"
+                                        IsChecked="{Binding ForceVideoMode}"
+                                        Margin="120,0,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Create Button -->
+                            <Button Content="Create Shortcut"
+                                Command="{Binding CreateShortcutCommand}"
+                                IsEnabled="{Binding CanCreate}"
+                                HorizontalAlignment="Center"
+                                Padding="32,12"
+                                FontSize="16"
+                                FontWeight="Bold">
+                                <Button.Styles>
+                                    <Style Selector="Button:disabled">
+                                        <Setter Property="Background" Value="#CCCCCC" />
+                                        <Setter Property="Foreground" Value="#888888" />
+                                    </Style>
+                                    <Style Selector="Button">
+                                        <Setter Property="Background" Value="#007AFF" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </Style>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#0051D5" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ═══ Bulk Mode (Game Folder) ═══ -->
+                    <DockPanel IsVisible="{Binding IsWbfsMode}">
+                        <!-- Bulk Controls -->
+                        <StackPanel DockPanel.Dock="Top" Margin="16,12,16,0" Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Loader:" VerticalAlignment="Center" />
+                                    <ComboBox ItemsSource="{Binding Loaders}"
+                                        SelectedItem="{Binding BulkSelectedLoader}"
+                                        Width="250">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                                <CheckBox Content="Select All"
+                                    IsChecked="{Binding BulkAllSelected}"
+                                    VerticalAlignment="Center" />
+                                <CheckBox Content="Enable Ocarina (All)"
+                                    IsChecked="{Binding BulkOcarinaAll}"
+                                    VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding BulkProgressText}"
+                                    VerticalAlignment="Center" Foreground="Gray" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Generate button at bottom -->
+                        <StackPanel DockPanel.Dock="Bottom" Margin="16,8,16,16" Spacing="8">
+                            <ProgressBar Value="{Binding ProgressValue}" Maximum="100" Height="18"
+                                IsVisible="{Binding IsBulkGenerating}" />
+                            <Button Content="Generate All WADs"
+                                Command="{Binding BulkGenerateCommand}"
+                                IsEnabled="{Binding HasBulkGames}"
+                                HorizontalAlignment="Center"
+                                Padding="32,12" FontSize="16" FontWeight="Bold">
+                                <Button.Styles>
+                                    <Style Selector="Button:disabled">
+                                        <Setter Property="Background" Value="#CCCCCC" />
+                                        <Setter Property="Foreground" Value="#888888" />
+                                    </Style>
+                                    <Style Selector="Button">
+                                        <Setter Property="Background" Value="#007AFF" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </Style>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#0051D5" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Game list in center -->
+                        <Border Margin="16,8" BorderBrush="Gray" BorderThickness="1"
+                            CornerRadius="4">
+                            <ScrollViewer>
+                                <ItemsControl ItemsSource="{Binding BulkGames}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="8,6" BorderBrush="#E0E0E0"
+                                                BorderThickness="0,0,0,1">
+                                                <Grid
+                                                    ColumnDefinitions="Auto,48,*,80,80,80,Auto,100">
+                                                    <!-- Checkbox -->
+                                                    <CheckBox Grid.Column="0"
+                                                        IsChecked="{Binding IsSelected}"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,8,0" />
+
+                                                    <!-- Cover Art (small) -->
+                                                    <Border Grid.Column="1" Width="36" Height="50"
+                                                        CornerRadius="2" ClipToBounds="True"
+                                                        Background="#F0F0F0" Margin="0,0,8,0">
+                                                        <Image Source="{Binding CoverArt}"
+                                                            Stretch="Uniform" />
+                                                    </Border>
+
+                                                    <!-- Game Name -->
+                                                    <StackPanel Grid.Column="2"
+                                                        VerticalAlignment="Center" Margin="0,0,8,0">
+                                                        <TextBlock Text="{Binding GameName}"
+                                                            FontWeight="SemiBold"
+                                                            TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding DiscId}"
+                                                            FontSize="11" Foreground="Gray"
+                                                            FontFamily="Courier New" />
+                                                    </StackPanel>
+
+                                                    <!-- Region -->
+                                                    <TextBlock Grid.Column="3"
+                                                        Text="{Binding Region}"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12" />
+
+                                                    <!-- Language -->
+                                                    <TextBlock Grid.Column="4"
+                                                        Text="{Binding Language}"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12" />
+
+                                                    <!-- Title ID -->
+                                                    <TextBlock Grid.Column="5"
+                                                        Text="{Binding TitleId}"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12" FontFamily="Courier New" />
+
+                                                    <!-- Ocarina -->
+                                                    <CheckBox Grid.Column="6"
+                                                        IsChecked="{Binding EnableOcarina}"
+                                                        Content="Ocarina"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="11"
+                                                        Margin="4,0" />
+
+                                                    <!-- Status -->
+                                                    <StackPanel Grid.Column="7"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Right">
+                                                        <TextBlock Text="{Binding Status}"
+                                                            FontSize="11"
+                                                            HorizontalAlignment="Right">
+                                                            <TextBlock.Styles>
+                                                                <Style Selector="TextBlock">
+                                                                    <Setter Property="Foreground"
+                                                                        Value="Gray" />
+                                                                </Style>
+                                                            </TextBlock.Styles>
+                                                        </TextBlock>
+                                                        <ProgressBar IsIndeterminate="True"
+                                                            Height="3" Width="80"
+                                                            IsVisible="{Binding IsProcessing}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </Border>
-                        
-                        <!-- Game Info -->
-                        <StackPanel Grid.Column="1" Spacing="4">
-                            <TextBlock Text="Game Information" FontWeight="Bold" FontSize="14" />
-                            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" VerticalAlignment="Top">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Game Name:" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="0" Grid.Column="1" 
-                                       Text="{Binding GameName}" 
-                                       FontWeight="Bold" 
-                                       IsReadOnly="True"
-                                       BorderThickness="0"
-                                       Background="Transparent"
-                                       Padding="0" />
-                                
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Disc ID:" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="1" Grid.Column="1" 
-                                       Text="{Binding DiscId}"
-                                       IsReadOnly="True"
-                                       BorderThickness="0"
-                                       Background="Transparent"
-                                       Padding="0" />
-                                
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Region:" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="2" Grid.Column="1" 
-                                       Text="{Binding GameRegion}"
-                                       IsReadOnly="True"
-                                       BorderThickness="0"
-                                       Background="Transparent"
-                                       Padding="0" />
-                            </Grid>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <!-- Configuration -->
-                <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Configuration" FontWeight="Bold" FontSize="14" />
-                        
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Loader:" Width="120" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding Loaders}"
-                                    SelectedItem="{Binding SelectedLoader}"
-                                    Width="300">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Name}" 
-                                                 ToolTip.Tip="{Binding Description}"
-                                                 Background="Transparent" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Title ID:" Width="120" VerticalAlignment="Center" />
-                            <TextBox Text="{Binding TitleId}" 
-                                   Width="120"
-                                   Watermark="e.g., RMCE" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Language:" Width="120" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding Languages}"
-                                    SelectedItem="{Binding SelectedLanguage}"
-                                    Width="200" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Region:" Width="120" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding Regions}"
-                                    SelectedItem="{Binding SelectedRegion}"
-                                    Width="200" />
-                        </StackPanel>
-
-                        <CheckBox Content="Enable Ocarina (Cheat Codes)" 
-                                IsChecked="{Binding EnableOcarina}" 
-                                Margin="120,4,0,0" />
-                        
-                        <CheckBox Content="Force Video Mode" 
-                                IsChecked="{Binding ForceVideoMode}" 
-                                Margin="120,0,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Create Button -->
-                <Button Content="Create Shortcut" 
-                      Command="{Binding CreateShortcutCommand}"
-                      IsEnabled="{Binding CanCreate}"
-                      HorizontalAlignment="Center"
-                      Padding="32,12"
-                      FontSize="16"
-                      FontWeight="Bold">
-                    <Button.Styles>
-                        <Style Selector="Button:disabled">
-                            <Setter Property="Background" Value="#CCCCCC" />
-                            <Setter Property="Foreground" Value="#888888" />
-                        </Style>
-                        <Style Selector="Button">
-                            <Setter Property="Background" Value="#007AFF" />
-                            <Setter Property="Foreground" Value="White" />
-                        </Style>
-                        <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="#0051D5" />
-                        </Style>
-                    </Button.Styles>
-                </Button>
-                      
-                    </StackPanel>
-                </ScrollViewer>
+                    </DockPanel>
+                </DockPanel>
             </TabItem>
 
             <!-- Homebrew App Shortcut Tab -->
             <TabItem Header="Homebrew App Shortcut">
                 <ScrollViewer>
                     <StackPanel Margin="16" Spacing="12">
-                        <TextBlock Text="Homebrew App Forwarder" 
-                                 FontSize="18" 
-                                 FontWeight="Bold" 
-                                 Margin="0,0,0,8" />
-                        
-                        <TextBlock Text="Create a channel that forwards to a homebrew app on your SD card." 
-                                 TextWrapping="Wrap" 
-                                 Foreground="Gray" 
-                                 Margin="0,0,0,16" />
-                        
+                        <TextBlock Text="Homebrew App Forwarder"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Margin="0,0,0,8" />
+
+                        <TextBlock
+                            Text="Create a channel that forwards to a homebrew app on your SD card."
+                            TextWrapping="Wrap"
+                            Foreground="Gray"
+                            Margin="0,0,0,16" />
+
                         <!-- Apps Directory Selection -->
                         <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Apps Directory" FontWeight="Bold" FontSize="14" />
-                                <TextBlock Text="Select the /apps/ directory on your SD card" 
-                                         Foreground="Gray" 
-                                         TextWrapping="Wrap" />
+                                <TextBlock Text="Select the /apps/ directory on your SD card"
+                                    Foreground="Gray"
+                                    TextWrapping="Wrap" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBox Text="{Binding HomebrewAppsDirectory}" 
-                                           Width="400"
-                                           IsReadOnly="True"
-                                           Watermark="Browse to /apps/ folder..." />
-                                    <Button Content="Browse..." Command="{Binding BrowseAppsDirectoryCommand}" />
+                                    <TextBox Text="{Binding HomebrewAppsDirectory}"
+                                        Width="400"
+                                        IsReadOnly="True"
+                                        Watermark="Browse to /apps/ folder..." />
+                                    <Button Content="Browse..."
+                                        Command="{Binding BrowseAppsDirectoryCommand}" />
                                 </StackPanel>
-                                
+
                                 <!-- App Selection -->
-                                <TextBlock Text="Select App" FontWeight="Bold" FontSize="14" Margin="0,8,0,0" />
+                                <TextBlock Text="Select App" FontWeight="Bold" FontSize="14"
+                                    Margin="0,8,0,0" />
                                 <ComboBox ItemsSource="{Binding AvailableApps}"
-                                        SelectedItem="{Binding SelectedApp}"
-                                        Width="300"
-                                        HorizontalAlignment="Left"
-                                        IsEnabled="{Binding HasApps}"
-                                        PlaceholderText="Choose an app..." />
-                                
-                                <TextBlock Text="Or enter manually (3-18 characters):" 
-                                         Foreground="Gray" 
-                                         Margin="0,8,0,0" />
-                                <TextBox Text="{Binding HomebrewAppFolder}" 
-                                       Watermark="e.g., homebrew_browser"
-                                       Width="300"
-                                       HorizontalAlignment="Left" />
+                                    SelectedItem="{Binding SelectedApp}"
+                                    Width="300"
+                                    HorizontalAlignment="Left"
+                                    IsEnabled="{Binding HasApps}"
+                                    PlaceholderText="Choose an app..." />
+
+                                <TextBlock Text="Or enter manually (3-18 characters):"
+                                    Foreground="Gray"
+                                    Margin="0,8,0,0" />
+                                <TextBox Text="{Binding HomebrewAppFolder}"
+                                    Watermark="e.g., homebrew_browser"
+                                    Width="300"
+                                    HorizontalAlignment="Left" />
+
+                                <!-- Icon Preview -->
+                                <Border
+                                    IsVisible="{Binding HomebrewIconPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                    Margin="0,12,0,0"
+                                    BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                                    Padding="8"
+                                    HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Image Source="{Binding HomebrewIconPreview}"
+                                            Width="128" Height="48"
+                                            Stretch="Uniform" />
+                                        <TextBlock Text="App Icon"
+                                            VerticalAlignment="Center"
+                                            Foreground="Gray"
+                                            FontSize="12" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Channel Configuration -->
                         <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
                             <StackPanel Spacing="8">
@@ -335,7 +483,7 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Create Button -->
                         <Button Content="Create Forwarder" 
                               Command="{Binding CreateHomebrewForwarderCommand}"
@@ -358,16 +506,10 @@
                                 </Style>
                             </Button.Styles>
                         </Button>
-                        
-                        <TextBlock Text="Note: This feature requires ForwardMii templates. Implementation coming soon." 
-                                 Foreground="Orange" 
-                                 TextWrapping="Wrap"
-                                 HorizontalAlignment="Center"
-                                 Margin="0,16,0,0" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <!-- WAD Validator Tab -->
             <TabItem Header="WAD Validator">
                 <ScrollViewer>
@@ -381,7 +523,7 @@
                                  TextWrapping="Wrap" 
                                  Foreground="Gray" 
                                  Margin="0,0,0,16" />
-                        
+
                         <!-- WAD File Selection -->
                         <Border BorderBrush="Gray" BorderThickness="1" Padding="12" CornerRadius="4">
                             <StackPanel Spacing="8">
@@ -412,7 +554,7 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Validation Results -->
                         <Border BorderBrush="Gray" 
                               BorderThickness="1" 
@@ -421,7 +563,7 @@
                               IsVisible="{Binding HasValidationResults}">
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Validation Results" FontWeight="Bold" FontSize="14" />
-                                
+
                                 <!-- Status -->
                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                                     <TextBlock Text="Status:" Width="120" FontWeight="SemiBold" />
@@ -429,7 +571,7 @@
                                              Foreground="{Binding WadValidationStatusColor}" 
                                              FontWeight="Bold" />
                                 </StackPanel>
-                                
+
                                 <!-- WAD Information -->
                                 <TextBlock Text="WAD Information" 
                                          FontWeight="Bold" 
@@ -486,15 +628,28 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Right: Game Art -->
-                                    <Image Grid.Column="1" 
-                                           Source="{Binding WadBannerImage}" 
-                                           Width="160" 
-                                           Height="224"
-                                           Stretch="Uniform"
-                                           VerticalAlignment="Top"
-                                           Margin="16,0,0,0"
-                                           IsVisible="{Binding HasWadBannerImage}" />
+                                    <!-- Right: Game Art + Extracted Icon (side by side) -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                        Spacing="16" VerticalAlignment="Top" Margin="16,0,0,0">
+                                        <Image Source="{Binding WadBannerImage}"
+                                            Width="160"
+                                            Height="224"
+                                            Stretch="Uniform"
+                                            IsVisible="{Binding HasWadBannerImage}" />
+                                        <Border IsVisible="{Binding HasWadExtractedIcon}"
+                                            BorderBrush="Gray" BorderThickness="1" CornerRadius="4"
+                                            Padding="4" VerticalAlignment="Center">
+                                            <StackPanel Spacing="4">
+                                                <Image Source="{Binding WadExtractedIcon}"
+                                                    Width="128" Height="128"
+                                                    Stretch="Uniform" />
+                                                <TextBlock Text="Extracted Icon"
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="Gray"
+                                                    FontSize="10" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
                                 </Grid>
 
                                 <!-- What is this? -->
@@ -530,7 +685,7 @@
                                                  LineHeight="20" />
                                     </StackPanel>
                                 </Border>
-                                
+
                                 <!-- Debug Information -->
                                 <Border BorderBrush="#FF0000" 
                                       BorderThickness="2" 
@@ -568,7 +723,7 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
-                                
+
                                 <!-- Warnings -->
                                 <TextBlock Text="Warnings" 
                                          FontWeight="Bold" 
@@ -585,7 +740,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                
+
                                 <!-- Errors -->
                                 <TextBlock Text="Errors" 
                                          FontWeight="Bold" 

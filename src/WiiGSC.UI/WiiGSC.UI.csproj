@@ -48,5 +48,6 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\cert-corrected.sys" />
     <EmbeddedResource Include="Resources\Loaders\**" />
+    <EmbeddedResource Include="Resources\ForwardMii\**" />
   </ItemGroup>
 </Project>

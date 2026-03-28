@@ -189,6 +189,10 @@ public class WitService
         if (!_isAvailable)
             throw new InvalidOperationException("wit is not available");
 
+        // DIAGNOSTIC logging
+        string diagLog = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "WiiGSC_diag.log");
+        void LogDiag(string msg) { File.AppendAllText(diagLog, $"[{DateTime.Now:HH:mm:ss.fff}] [WitService] {msg}\n"); }
+
         try
         {
             string extractDir = Path.Combine(outputDir, "extracted_banner");
@@ -196,14 +200,18 @@ public class WitService
 
             progress?.Report("Extracting banner from game file...");
 
+            string witExe = _witPath ?? "wit";
+            string args = $"extract \"{gameFilePath}\" \"{extractDir}\" --files +opening.bnr --flat";
+            LogDiag($"Running: {witExe} {args}");
+
             // Use --files +opening.bnr to extract only the banner file
             // wit extract works directly on both ISO and WBFS files
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = _witPath ?? "wit",
-                    Arguments = $"extract \"{gameFilePath}\" \"{extractDir}\" --files +opening.bnr --flat",
+                    FileName = witExe,
+                    Arguments = args,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -212,34 +220,54 @@ public class WitService
             };
 
             process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
-            string error = await process.StandardError.ReadToEndAsync();
+
+            // Read stdout and stderr concurrently to avoid deadlocks
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(outputTask, errorTask);
+            string output = outputTask.Result;
+            string error = errorTask.Result;
+
             await process.WaitForExitAsync();
+
+            LogDiag($"Exit code: {process.ExitCode}");
+            LogDiag($"stdout: {output.Trim()}");
+            LogDiag($"stderr: {error.Trim()}");
 
             progress?.Report($"wit exit code: {process.ExitCode}, stdout: {output.Trim()}, stderr: {error.Trim()}");
 
             // Look for opening.bnr in extract directory
             string bannerPath = Path.Combine(extractDir, "opening.bnr");
+            LogDiag($"Checking {bannerPath} exists: {File.Exists(bannerPath)}");
             if (File.Exists(bannerPath))
             {
                 var info = new FileInfo(bannerPath);
+                LogDiag($"Banner found! Size: {info.Length} bytes");
                 progress?.Report($"Banner extracted successfully: {info.Length} bytes");
                 return bannerPath;
             }
 
             // Sometimes it might be in a subdirectory
             var files = Directory.GetFiles(extractDir, "opening.bnr", SearchOption.AllDirectories);
+            LogDiag($"Recursive search found {files.Length} opening.bnr files");
             if (files.Length > 0)
             {
+                LogDiag($"Using: {files[0]}");
                 progress?.Report("Banner extracted successfully (subdirectory)");
                 return files[0];
             }
 
+            // List what IS in the extract directory
+            foreach (var f in Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories))
+                LogDiag($"  Found file: {f}");
+
             progress?.Report("Banner file not found after extraction");
+            LogDiag("Banner NOT found after extraction");
             return null;
         }
         catch (Exception ex)
         {
+            LogDiag($"EXCEPTION: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             progress?.Report($"Error extracting banner: {ex.Message}");
             return null;
         }

@@ -39,3 +39,7 @@ out/
 
 # Logs
 *.log
+
+tmp/
+
+WiiGSC.app/
